@@ -1,0 +1,62 @@
+W katalogu są wszystkie pliki, których używałem podczas pisania i testowania projektu.
+
+* Proste skrypty bashowe ./skrypt1.sh i ./skrypt2.sh, czytające w pętli potoki fifo -  s1 lub s4  ( oczywiście może być ich więcej ).
+	
+* Użyłem dwóch skryptów, aby zbadać czy po zamknięciu jednego fifo i otworzeniu drugiego program płynnie przechodzi 
+z wpisywaniem do nich.
+
+* Pusty plik s5 i katalog s6 - aby sprawdzić rozpoznawanie czy scieżka prowadzi do fifo.
+
+* Plik konfiguracyjny conf.txt z rytmami.
+
+* Plik źródłowy main.c i build ./main.out
+
+=======
+
+Moje założenia:
+
+- Maksymalna długość rytmu 128 znaków i ilość linii też 128 znaków.
+
+- Program w celu przechowywania rytmów używa tablicy dwuwymiarowej o stałych wymiarach 128x128;
+
+- Wczytywanie znaków z pliku configuracyjnego do tablicy odbywa się przy użyciu funkcji fgets().
+  Nie używam funkcji tego rodzaju nigdzie indziej. 
+
+- Użycie kodu konsolowego "\e[1;1H\e[2J" w celu czyszczenia ekranu. 
+  Mam nadzieję że na innych wersjach systemu kod ten również działa.
+
+- Użyłem funkcji pipe2() zamiast pipe(), gdyż nie trzeba wtedy dołączać funkcji fcntl().
+
+- Aby nie obciążać procesora, w pętli wyszukiwającej kanał używam funkcji nanosleep z odstępem 1 sekundy.
+
+- Używanie dla budzików sygnałów czasu rzeczywistego ( SIGRMIN i SIGRTMIN+1)
+
+- "Łapanie" sygnału SIGPIPE, aby program nie  wyłączył się podczas zamknięcia potoku od strony do czytania.
+   W procedurze obsługi tego sygnału nie robię nic, gdyż proces nie musi niczego specjalnego robić w celu odebrania tego sygnału,
+   ale jeśli proces go nie przechwyci, to czynnoscią domyślną jest zakończenie procesu.
+
+- NIe używanie funkcji typu printf w obsłudze sygnału, tylko bezpiecznej write(). 
+
+- Znak '.' nie powoduje dodatkowego "spania" , tylko oznacza brak wpisywania do fifo.
+
+- Self-pipe trick - w moim przypadku użycie dwóch potoków anonimowych w celu wysyłania informacji o numerze linii 
+  i indeksie alfabetu dla obsługi timerów.
+
+- Liczniki sygnałów count_usr1 i count_usr2 - aby zapewnić kolejkowanie sygnału.
+
+=======
+
+Mały problem interpretacyjny:
+ 
+Generowanie kolejnych generacji podczas wysyłania dwóch różych sygnałów. 
+
+* Podczas operacji wpisywania asynchronicznego używam osobnych dwóch liczników indeksów tablicy i do alfabetu i liczników 
+   numerów linii( rytmu).
+   Po wysłaniu SIGUSR1 i SIGUSR2 program inkrementuje liczniki, osobno dla każdego sygnału.
+   Przyjąłem dwie osobne zmienne oznaczające indeks do tablicy z alfabetem. 
+   Podczas wpisywania asynchronicznego obie funkcje obsługujące sygnały wysyłane przez budzik
+   korzystają z tych zmiennych niezależnie od siebie. 
+=======
+
+Kompilowałem program kompilatorem gcc ( gcc -Wall main.c -o main.out -lrt )
+
